@@ -1,0 +1,158 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!--
+Copyright (c) 2003-2010, CKSource - Frederico Knabben. All rights reserved.
+For licensing, see LICENSE.html or http://ckeditor.com/license
+-->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<title>Full Page Editing - CKEditor Sample</title>
+	<meta content="text/html; charset=utf-8" http-equiv="content-type" />
+	<script type="text/javascript" src="../ckeditor.js"></script>
+	<script src="sample.js" type="text/javascript"></script>
+	<script src="jquery.min.js"></script>
+	<link href="sample.css" rel="stylesheet" type="text/css" />
+	
+<script>
+	var socket;
+	var host = "ws://localhost:8000/socket/server/startDaemon.php";
+
+	$(document).ready(function()
+	{
+		if(!("WebSocket" in window)){
+			$('#chatLog, input, button, #examples').fadeOut("fast");
+			$('<p>Oh no, you need a browser that supports WebSockets. How about <a href="http://www.google.com/chrome">Google Chrome</a>?</p>').appendTo('#container');
+		}else{
+			//The user has WebSockets
+		connect();
+	}
+		
+	
+	function connect(){
+		//var socket;
+		//var host = "ws://localhost:8000/socket/server/startDaemon.php";
+		
+		try{
+			socket = new WebSocket(host);
+			message('<p class="event">initial Socket Status: '+socket.readyState);
+			
+			socket.onopen = function()
+			{
+				message('<p class="event">(on open)Socket Status: '+socket.readyState+' (open)');
+			}
+			
+			socket.onmessage = function(msg)
+			{
+				var incomingChar = msg.data;
+				message('<p class="message">Received: ' + msg.data + "</p>");
+				var oEditor = CKEDITOR.instances.editor1;
+				if (incomingChar == " ") oEditor.insertHtml("-");
+				else if (incomingChar == "enter") oEditor.insertHtml("<p></p>");
+				else oEditor.insertHtml(msg.data);
+			}
+			
+			socket.onclose = function()
+			{
+				message('<p class="event">(on close)Socket Status: '+socket.readyState+' (Closed)');
+			}
+				
+		} 
+		catch(exception)
+		{
+			message('<p>Error'+exception);
+		}
+		
+		$('#text').keypress(function(event) {
+				  if (event.keyCode == '13') {  send();  }
+		});	
+		
+	}
+		
+		function send(){
+			var text = $('#text').val();
+			if(text==""){
+				message('<p class="warning">Please enter a message');
+				return ;	
+			}
+			try{
+				socket.send(text);
+				message('<p class="event">Sent: ' + text)
+			} catch(exception){
+				message('<p class="warning">did not send ' + text);
+			}
+			$('#text').val("");
+		}
+		
+		function sendString(ttt){
+			socket.send(ttt);
+			message('<p class="event">Sent: ' + ttt);
+		}
+		
+		function message(msg)
+		{
+			$('#chatLog').append(msg+'</p>');
+		}
+	
+	
+		var content_editor = CKEDITOR.instances['editor1'];
+		content_editor.on( 'key', function(e) {
+			var keyCode = e.data.keyCode;
+			if (keyCode >= 65 && keyCode <= 90){
+				keyCode += 32;
+			}
+			if (keyCode == 13){ // this is an enter
+				sendString("enter");
+			}
+			else{
+				sendString(String.fromCharCode(keyCode));
+			}
+			//sendString(keyCode);
+		});
+				
+		
+});
+</script>
+
+</head>
+
+<body onload="onLoad()">
+	<h1>
+		CoCKEditor Testing Client
+	</h1>
+	<!-- This <div> holds alert messages to be display in the sample page. -->
+	<div id="alerts">
+		<noscript>
+			<p>
+				<strong>CKEditor requires JavaScript to run</strong>. In a browser with no JavaScript
+				support, like yours, you should still see the contents (HTML data) and you should
+				be able to edit it normally, without a rich editor interface.
+			</p>
+		</noscript>
+	</div>
+	<form action="sample_posteddata.php" method="post">
+		<p>This is a prototype of CoCKEditor, demostrating fucntionalities of Websocket integrated with CKEditor API.</p>
+		<p>Open up 2 windows of this address, and type into one of the editors. You will see that your input is sent through websockt to reach the other editor. This shows a Websocket connected between PHP server and 2 instances of CKEditor. </p>
+		<p>
+			<textarea cols="80" id="editor1" name="editor1" rows="10"></textarea>
+			<script type="text/javascript">
+			//<![CDATA[
+				CKEDITOR.replace( 'editor1',
+					{
+						fullPage : true
+					});
+			//]]>
+			</script>
+		</p>
+	</form>
+	
+	<div id="wrapper">
+  
+  	<div id="container">
+        <div id="chatLog">
+        </div>
+
+	</div>
+  
+  </div>
+  
+</body>
+</html>
